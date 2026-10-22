@@ -1,7 +1,7 @@
 import numpy as np
 from shapely.geometry import LineString
 
-from common.graph import bridge_components, build_graph, reach_weights
+from common.graph import bridge_components, build_graph, nearest_nodes, reach_weights
 
 LINE = LineString([(0, 0), (1000, 0), (2000, 0)])  # 간선 1000m씩, 노드 0-1-2
 
@@ -45,3 +45,18 @@ def test_bridge_components_links_small_gap():
     r = reach_weights(Gb, xy, np.array([[0, 0]]), np.array([[200, 0]]), np.array([1.0]), cutoff=250)
     assert r.tolist() == [1.0]
     assert bridge_components(G, xy, tol=2.0)[1] == 0
+
+
+def test_reach_weights_empty_graph():
+    # 자전거 시설이 하나도 없는 시군구: 선이 없어 노드가 0개여도 0을 돌려준다(예외·NaN 금지)
+    G, xy = build_graph([])
+    o = np.array([[0, 0], [10, 10]])
+    d, w = np.array([[0, 0]]), np.array([5.0])
+    for kw in ({}, {'dest_snap_max': 300}, {'chunk': 1}):
+        r = reach_weights(G, xy, o, d, w, **kw)
+        assert r.tolist() == [0.0, 0.0]
+    assert nearest_nodes(xy, o, 150).tolist() == [-1, -1]
+    assert reach_weights(G, xy, np.empty((0, 2)), d, w).shape == (0,)
+    assert bridge_components(G, xy)[1:] == (0, 0.0)  # 빈 망도 틈 연결 단계가 죽지 않는다
+    # 옛 형태의 빈 좌표 배열(shape (0,))도 받는다
+    assert reach_weights(G, np.array([]), o, d, w).tolist() == [0.0, 0.0]

@@ -43,13 +43,16 @@ def build_graph(lines, snap=1.0):
         cols += [j, i]
         w += [d, d]
     n = len(xy)
-    return coo_matrix((w, (rows, cols)), shape=(n, n)).tocsr(), np.array(xy)
+    # 선이 없으면(시설 없는 시군구) 노드 0개: 좌표 배열도 (0, 2)로 맞춘다
+    return coo_matrix((w, (rows, cols)), shape=(n, n)).tocsr(), np.array(xy).reshape(-1, 2)
 
 
 def nearest_nodes(nodes_xy, pts_xy, max_d):
-    nodes_xy = np.asarray(nodes_xy)[:, :2]
+    nodes_xy = np.asarray(nodes_xy)
     pts_xy = np.atleast_2d(pts_xy)[:, :2]
-    d, idx = cKDTree(nodes_xy).query(pts_xy)
+    if nodes_xy.size == 0:  # 노드 없음 -> 어디도 못 붙는다
+        return np.full(len(pts_xy), -1)
+    d, idx = cKDTree(nodes_xy[:, :2]).query(pts_xy)
     idx[d > max_d] = -1
     return idx
 
@@ -81,7 +84,10 @@ def bridge_components(G, nodes_xy, tol=10.0):
             절반이 아니라 이 개수 자체가 "다리 개수"다).
         bridge_len_m: 브리지 엣지 길이 합(m, 무방향 엣지당 한 번씩만 합산).
     """
-    nodes_xy = np.asarray(nodes_xy)[:, :2]
+    nodes_xy = np.asarray(nodes_xy)
+    if nodes_xy.size == 0:
+        return G, 0, 0.0
+    nodes_xy = nodes_xy[:, :2]
     n_components, labels = connected_components(G, directed=False)
 
     degree = np.asarray((G != 0).sum(axis=1)).ravel()
@@ -137,6 +143,8 @@ def reach_weights(G, nodes_xy, origins_xy, dests_xy, dests_w, cutoff=3750.0, sna
     if dest_snap_max is None:
         dest_snap_max = snap_max
     dests_w = np.asarray(dests_w, float)
+    if np.size(nodes_xy) == 0:  # 시설이 없는 시군구: 도달률 0 (NaN·예외 아님)
+        return np.zeros(len(origins_xy))
     o = nearest_nodes(nodes_xy, origins_xy, snap_max)
     t = nearest_nodes(nodes_xy, dests_xy, dest_snap_max)
     out = np.zeros(len(o))

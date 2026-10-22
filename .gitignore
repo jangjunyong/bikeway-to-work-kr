@@ -1,3 +1,23 @@
 .superpowers/
 docs/plan.md
 docs/design.md
+
+# 비공개·대용량 입력 (공장 좌표, 공식 GIS 원본, 국민연금 원본 행, 단절 지점 목록)
+raw/
+data/
+*geocode*
+nps_*
+공장등록*
+gap_points*
+*.tif
+*.tiff
+*.pbf
+*.parquet
+*.gpkg
+*.shp
+
+# 파이썬
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
